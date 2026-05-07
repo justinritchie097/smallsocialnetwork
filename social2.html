@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mini Social Network</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #0f172a;
+        color: white;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .container {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .card {
+        background: #1e293b;
+        padding: 25px;
+        border-radius: 16px;
+        width: 100%;
+        max-width: 450px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      }
+
+      h1,
+      h2 {
+        text-align: center;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        padding: 12px;
+        margin-top: 10px;
+        border: none;
+        border-radius: 8px;
+      }
+
+      button {
+        width: 100%;
+        padding: 12px;
+        margin-top: 15px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+
+      .primary-btn {
+        background: white;
+        color: black;
+      }
+
+      .feed-container {
+        max-width: 900px;
+        margin: auto;
+        padding: 20px;
+      }
+
+      .navbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        background: #1e293b;
+      }
+
+      .post-box,
+      .post {
+        background: #1e293b;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+      }
+
+      .meta {
+        font-size: 0.85rem;
+        color: #cbd5e1;
+        margin-bottom: 10px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .small-btn {
+        width: auto;
+        padding: 8px 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Login Page -->
+    <div id="loginPage" class="container">
+      <div class="card">
+        <h1>Welcome Back</h1>
+        <input id="username" type="text" placeholder="Enter username" />
+        <input id="password" type="password" placeholder="Enter password" />
+        <button class="primary-btn" onclick="login()">Login</button>
+      </div>
+    </div>
+
+    <!-- Social Network -->
+    <div id="socialPage" class="hidden">
+      <div class="navbar">
+        <h2>Mini Social Network</h2>
+        <button class="small-btn" onclick="logout()">Logout</button>
+      </div>
+
+      <div class="feed-container">
+        <div class="post-box">
+          <textarea
+            id="postContent"
+            placeholder="What's on your mind?"
+          ></textarea>
+          <button class="primary-btn" onclick="createPost()">Post</button>
+        </div>
+
+        <div id="profileCard" class="post-box"></div>
+        <div id="suggestedUsers" class="post-box"></div>
+        <div id="feed"></div>
+      </div>
+    </div>
+
+    <script>
+      let currentUser = localStorage.getItem("currentUser") || null;
+      let posts = JSON.parse(localStorage.getItem("posts")) || [];
+      let following = JSON.parse(localStorage.getItem("following")) || [];
+
+      function login() {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        if (!username || !password) {
+          alert("Please fill out both fields.");
+          return;
+        }
+
+        currentUser = username;
+        localStorage.setItem("currentUser", currentUser);
+        showSocialPage();
+      }
+
+      function logout() {
+        localStorage.removeItem("currentUser");
+        currentUser = null;
+        document.getElementById("socialPage").classList.add("hidden");
+        document.getElementById("loginPage").classList.remove("hidden");
+      }
+
+      function showSocialPage() {
+        document.getElementById("loginPage").classList.add("hidden");
+        document.getElementById("socialPage").classList.remove("hidden");
+        renderPosts();
+      }
+
+      function createPost() {
+        const content = document.getElementById("postContent").value;
+
+        if (!content) return;
+
+        posts.unshift({
+          comments: [],
+          user: currentUser,
+          content: content,
+          likes: 0,
+        });
+
+        localStorage.setItem("posts", JSON.stringify(posts));
+        document.getElementById("postContent").value = "";
+        renderPosts();
+      }
+
+      function addComment(index) {
+        const text = document.getElementById(`comment-${index}`).value;
+        if (!text) return;
+
+        posts[index].comments.push({
+          user: currentUser,
+          text,
+        });
+
+        localStorage.setItem("posts", JSON.stringify(posts));
+        renderPosts();
+      }
+
+      function followUser(user) {
+        if (!following.includes(user)) {
+          following.push(user);
+          localStorage.setItem("following", JSON.stringify(following));
+          renderPosts();
+        }
+      }
+
+      function likePost(index) {
+        posts[index].likes++;
+        localStorage.setItem("posts", JSON.stringify(posts));
+        renderPosts();
+      }
+
+      function renderProfile() {
+        const profileCard = document.getElementById("profileCard");
+        profileCard.innerHTML = `
+                <h3>${currentUser}'s Profile</h3>
+                <p>Total Posts: ${posts.filter((p) => p.user === currentUser).length}</p>
+                <p>Following: ${following.length}</p>
+              `;
+      }
+
+      function renderSuggestedUsers() {
+        const suggestedUsers = document.getElementById("suggestedUsers");
+        const allUsers = [...new Set(posts.map((p) => p.user))].filter(
+          (u) => u !== currentUser && !following.includes(u),
+        );
+
+        if (allUsers.length === 0) {
+          suggestedUsers.innerHTML = "<p>No users to follow.</p>";
+          return;
+        }
+
+        suggestedUsers.innerHTML = `
+                <h3>Suggested Users to Follow</h3>
+                ${allUsers
+                  .map(
+                    (user) => `
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span>${user}</span>
+                        <button class="small-btn" onclick="followUser('${user}')">Follow</button>
+                      </div>
+                    `,
+                  )
+                  .join("")}
+              `;
+      }
+
+      function renderPosts() {
+        renderProfile();
+        renderSuggestedUsers();
+
+        const feed = document.getElementById("feed");
+        feed.innerHTML = "";
+
+        const postsHtml = (posts || [])
+          .map(
+            (post, index) => `
+                <div class="post">
+                  <h3>${post.user}</h3>
+                  <p>${post.content}</p>
+                  <div class="actions">
+                    <button class="small-btn" onclick="likePost(${index})">❤️ ${post.likes}</button>
+                  </div>
+                  <div class="post-box">
+                    <h4>Comments</h4>
+                    ${(post.comments || []).map((c) => `<p><strong>${c.user}:</strong> ${c.text}</p>`).join("")}
+                    <input id="comment-${index}" placeholder="Write a comment..." />
+                    <button class="small-btn" onclick="addComment(${index})">Comment</button>
+                  </div>
+                </div>
+              `,
+          )
+          .join("");
+
+        feed.innerHTML = postsHtml;
+      }
+
+      if (currentUser) {
+        showSocialPage();
+      }
+    </script>
+  </body>
+</html>
+`
